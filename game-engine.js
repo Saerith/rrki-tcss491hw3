@@ -26,16 +26,152 @@ define([
             this.cursor = {x:0,y:0};
             this.bubbleRadius = 30;
             this.numBubblesToSpawn = 3;
+            this.socket = null;
+
+            this.studentName = "Alyssa Ingersoll";
+            this.stateName="teststate";
+
+            this.state = {};
         }
+
+
+        save (statename) {
+            let data = {
+                "studentname": this.studentName,
+                "statename": statename,
+                "entities" : this.getEntities()
+            }
+            console.log("Saving data:");
+            console.log(data);
+            this.socket.emit("save", data);
+        }
+
+
+        loadEntity(data) {
+            let ent = null;
+            if (data.name === "bubble") {
+                ent = new Entity.Bubble(this, data.x, data.y);
+                ent.xVel = data.xVel;
+                ent.yVel = data.yVel;
+                ent.radius = data.radius;
+                ent.rgb = data.rgb;
+                ent.mass = data.mass;
+                ent.minSize = data.minSize;
+                ent.shrink = data.shrink;
+                ent.terminalVel = data.terminalVel;
+                ent.shrinkTime = data.shrinkTime;
+                ent.gravity = data.gravity;
+            }
+            else if (data.name === "terrain") {
+                ent = new Entity.Terrain(this, data.x, data.y, data.width, data.height);
+            }
+            return ent;
+        }
+
+
+        loadEntities(data) {
+            let toLoad = [];
+            let bubbleProps = [
+                "name",
+                "x", "y", 
+                "xVel", "yVel",
+                "radius",
+                "rgb",
+                "mass",
+                "minSize",
+                "shrink",
+                "terminalVel",
+                "shrinkTime",
+                "gravity"
+            ];
+            let terrainProps = ["name", "x", "y", "width", "height"];
+
+            for (let i = 0; i < data.entities.length; i++) {
+                let curr = data.entities[i];
+                
+                toLoad.push(this.loadEntity(curr));
+                   
+            }
+            this.entities = toLoad;
+
+        }
+
+        getEntities() {
+            let toSave = [];
+            let bubbleProps = [
+                "name",
+                "x", "y", 
+                "xVel", "yVel",
+                "radius",
+                "rgb",
+                "mass",
+                "minSize",
+                "shrink",
+                "terminalVel",
+                "shrinkTime",
+                "gravity"
+            ];
+            let terrainProps = ["name", "x", "y", "width", "height"];
+
+            for (let i = 0; i < this.entities.length; i++) {
+                let curr = this.entities[i];
+                if (curr.name === "bubble") {
+                    let props = {};
+                    for (let j = 0; j < bubbleProps.length; j++) {
+                        props[bubbleProps[j]] = curr[bubbleProps[j]];
+                    }
+                    toSave.push(props);
+                } // bubble
+
+                if (curr.name === "terrain") {
+                    let props = {};
+                    for (let j = 0; j < terrainProps.length; j++) {
+                        props[terrainProps[j]] = curr[terrainProps[j]];
+                    }
+                    toSave.push(props);
+                } // terrain
+            }
+
+            return toSave;
+        }
+
+
+        load (statename) {
+            let data = {
+                "studentname": this.studentName,
+                "statename": statename
+            }
+            return this.socket.emit("load", data);
+        }
+
 
         /*
         Initializes the game engine
         */
         init (ctx) {
             this.ctx = ctx;
-            this.pause = false;
+            let that = this;
             this.surfaceWidth = this.ctx.canvas.width;
             this.surfaceHeight = this.ctx.canvas.height;
+
+            this.pause = false;
+            this.socket = io.connect("http://24.16.255.56:8888");
+
+            this.socket.on("connect", function () {
+                console.log("Socket connected.")
+            });
+            this.socket.on("disconnect", function () {
+                console.log("Socket disconnected.")
+            });
+            this.socket.on("reconnect", function () {
+                console.log("Socket reconnected.")
+            });
+            this.socket.on('load', function (data) {
+                console.log("Loading:");
+                console.log(data);
+                that.loadEntities(data);
+            });
+
             this.startInput();
 
             console.log('game initialized');
@@ -95,8 +231,16 @@ define([
             }, false);
 
             this.ctx.canvas.addEventListener("keypress", function (e) {
-                if (String.fromCharCode(e.which) === ' ') that.pause = !that.pause;
-                e.preventDefault();
+                if (String.fromCharCode(e.which) === ' ') { 
+                    that.pause = !that.pause;
+                    e.preventDefault();
+                }
+                else if (String.fromCharCode(e.which) === 's') {
+                    that.save(that.statename);
+                }
+                else if (String.fromCharCode(e.which) === 'l') {
+                    console.log(that.load(that.statename));
+                }
             }, false);
 
             console.log('Input started');

@@ -23,19 +23,9 @@ define([
             this.yVel = 0;
             this.xVel = 0;
 
-            this.xAccel = 0;
-            this.yAccel = 0;
-
             this.terminalVel = 10;
 
             this.removeFromWorld = false;
-
-            // used for simple rect hitbox
-            this.boundX = null;
-            this.boundY = null;
-            this.lastBoundY = null;
-            this.boundWidth = null;
-            this.boundHeight = null;
         }
 
 
